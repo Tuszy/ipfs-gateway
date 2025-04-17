@@ -5,7 +5,7 @@ const app = express();
 const port = 3000;
 
 // Your local IPFS API
-const localNode = "http://127.0.0.1";
+const localNode = "http://ipfs";
 const publicGateway = "https://ipfs.io";
 
 const localGateway = axios.create({
@@ -46,28 +46,9 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
             }
         });
 
-        // Pipe the remote stream to response and also add to local node
-        const chunks = [];
-        remoteStream.data.on("data", (chunk) => chunks.push(chunk));
-        remoteStream.data.on("end", async () => {
-            const fullBuffer = Buffer.concat(chunks);
-
-            // Add to local node
-            try {
-                const form = new FormData();
-                form.append('file', new Blob(fullBuffer), { filename: cid.split('/').pop() });
-
-                await localRpc.post(`/api/v0/add?pin=true`, form, {
-                    headers: { "Content-Type": "multipart/form-data" },
-                });
-                console.log(`CID ${cid} added to local node`);
-            } catch (addErr) {
-                console.error("Failed to add CID to local node:", addErr.message);
-            }
-
-
-            res.set(remoteStream.headers);
-            res.send(fullBuffer);
+        res.set(remoteStream.headers);
+        return pipeline(remoteStream.data, res, (err) => {
+            if (err) console.error("Pipeline error (remote):", err);
         });
     } catch (err) {
         console.error("Failed to fetch from public gateway:", err.message);
