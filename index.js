@@ -34,8 +34,7 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
             if (err) console.error("Pipeline error (local):", err);
         });
     } catch (err) {
-        console.log(err.toString());
-        console.log(`CID ${cid} not found locally. Fetching from public gateway...`);
+        console.log(`CID ${cid} not found locally. Fetching from public gateway...`, err.message);
     }
 
     // Not found locally — fetch from public gateway
@@ -56,9 +55,7 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
             // Add to local node
             try {
                 const form = new FormData();
-                form.append('file', new Blob(fullBuffer), {
-                    filename: cid // optional, but helps with file name
-                });
+                form.append('file', new Blob(fullBuffer), { filename: cid.split('/').pop() });
 
                 await localRpc.post(`/api/v0/add?pin=true`, form, {
                     headers: { "Content-Type": "multipart/form-data" },
