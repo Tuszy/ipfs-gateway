@@ -11,8 +11,8 @@ const localNode = "http://ipfs";
 const publicGateway = "https://ipfs.io";
 
 const localGateway = axios.create({
-    baseURL: localNode + ":8081",
-    port: 8081
+    baseURL: localNode + ":8080",
+    port: 8080
 });
 
 const cacheDir = path.join(__dirname, 'cache');
