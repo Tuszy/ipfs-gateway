@@ -5,18 +5,28 @@ const app = express();
 const port = 3000;
 
 // Your local IPFS API
-const localNode = "http://ipfs:5001";
+const localNode = "http://127.0.0.1";
 const publicGateway = "https://ipfs.io";
+
+const localGateway = axios.create({
+    baseURL: localNode + ":8081",
+    port: 8081
+});
+
+const localRpc = axios.create({
+    baseURL: localNode + ":5001",
+    port: 5001
+});
 
 app.get("/ipfs/:cid(*)", async (req, res) => {
     const cid = req.params.cid;
 
     // Check if the CID is available locally
     try {
-        await axios.post(`${localNode}/api/v0/ls?arg=${cid}`);
-        // If successful, stream it from the local gateway
-        const localStream = await axios.get(`${localNode}/ipfs/${cid}`, {
+        const localStream = await localGateway.get(`/ipfs/${cid}`, {
             responseType: "stream",
+            redirect: "follow",
+            signal: AbortSignal.timeout(2000)
         });
 
         res.set(localStream.headers);
@@ -24,6 +34,7 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
             if (err) console.error("Pipeline error (local):", err);
         });
     } catch (err) {
+        console.log(err.toString());
         console.log(`CID ${cid} not found locally. Fetching from public gateway...`);
     }
 
@@ -41,7 +52,7 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
 
             // Add to local node
             try {
-                await axios.post(`${localNode}/api/v0/add?pin=true`, fullBuffer, {
+                await localRpc.post(`/api/v0/add?pin=true`, fullBuffer, {
                     headers: { "Content-Type": "multipart/form-data" },
                 });
                 console.log(`CID ${cid} added to local node`);
