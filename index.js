@@ -55,7 +55,12 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
 
             // Add to local node
             try {
-                await localRpc.post(`/api/v0/add?pin=true`, fullBuffer, {
+                const form = new FormData();
+                form.append('file', new Blob(fullBuffer), {
+                    filename: cid // optional, but helps with file name
+                });
+
+                await localRpc.post(`/api/v0/add?pin=true`, form, {
                     headers: { "Content-Type": "multipart/form-data" },
                 });
                 console.log(`CID ${cid} added to local node`);
