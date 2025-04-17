@@ -1,6 +1,8 @@
 const express = require("express");
 const axios = require("axios");
 const { pipeline } = require("stream");
+const fs = require('fs');
+const path = require('path');
 const app = express();
 const port = 3000;
 
@@ -13,13 +15,35 @@ const localGateway = axios.create({
     port: 8081
 });
 
-const localRpc = axios.create({
-    baseURL: localNode + ":5001",
-    port: 5001
-});
+const cacheDir = path.join(__dirname, 'cache');
+
+if (!fs.existsSync(cacheDir)) {
+    fs.mkdirSync(cacheDir); // Create the cache directory if it doesn't exist
+}
+
+const getCacheFilePath = (cidPath) => {
+    return path.join(cacheDir, `${cidPath.replace(/\//g, '_')}.cache`);
+};
+
+const getContentTypeFilePath = (cidPath) => {
+    return path.join(cacheDir, `${cidPath.replace(/\//g, '_')}.content-type`);
+};
+
 
 app.get("/ipfs/:cid(*)", async (req, res) => {
     const cid = req.params.cid;
+
+    const cacheFilePath = getCacheFilePath(cid);
+    const contentTypeFilePath = getContentTypeFilePath(cid);
+
+    // Check if the file exists in the cache
+    if (fs.existsSync(cacheFilePath) && fs.existsSync(contentTypeFilePath)) {
+        console.log('Cache hit');
+        const cachedData = fs.readFileSync(cacheFilePath);
+        const cachedContentType = fs.readFileSync(contentTypeFilePath, 'utf-8');
+        res.setHeader('Content-Type', cachedContentType);
+        return res.send(cachedData);
+    }
 
     // Check if the CID is available locally
     try {
@@ -40,16 +64,17 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
     // Not found locally — fetch from public gateway
     try {
         const remoteStream = await axios.get(`${publicGateway}/ipfs/${cid}`, {
-            responseType: "stream",
+            responseType: "arraybuffer",
             headers: {
                 'User-Agent': 'Mozilla/5.0 (compatible; LuksoHangout/1.0)'
             }
         });
 
+        fs.writeFileSync(cacheFilePath, remoteStream.data); // Save to cache file
+        fs.writeFileSync(contentTypeFilePath, remoteStream.headers['content-type']); // Save Content-Type
+
         res.set(remoteStream.headers);
-        return pipeline(remoteStream.data, res, (err) => {
-            if (err) console.error("Pipeline error (remote):", err);
-        });
+        res.send(remoteStream.data);
     } catch (err) {
         console.error("Failed to fetch from public gateway:", err.message);
         res.status(500).send("Failed to fetch content.");
