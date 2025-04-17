@@ -42,6 +42,9 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
     try {
         const remoteStream = await axios.get(`${publicGateway}/ipfs/${cid}`, {
             responseType: "stream",
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (compatible; LuksoHangout/1.0)'
+            }
         });
 
         // Pipe the remote stream to response and also add to local node
@@ -60,6 +63,8 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
                 console.error("Failed to add CID to local node:", addErr.message);
             }
 
+
+            res.set(remoteStream.headers);
             res.send(fullBuffer);
         });
     } catch (err) {
