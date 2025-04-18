@@ -1,5 +1,5 @@
 const express = require("express");
-const cors = required("cors");
+const cors = require("cors");
 const axios = require("axios");
 const { pipeline } = require("stream");
 const fs = require('fs');
