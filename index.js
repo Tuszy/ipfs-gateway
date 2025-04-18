@@ -51,7 +51,7 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
         const localStream = await localGateway.get(`/ipfs/${cid}`, {
             responseType: "stream",
             redirect: "follow",
-            signal: AbortSignal.timeout(2000)
+            signal: AbortSignal.timeout(5000)
         });
 
         localStream.headers["Cache-Control"] = 'public, max-age=31557600';
