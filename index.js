@@ -1,10 +1,12 @@
 const express = require("express");
+const cors = required("cors");
 const axios = require("axios");
 const { pipeline } = require("stream");
 const fs = require('fs');
 const path = require('path');
 const app = express();
 const port = 3000;
+app.use(cors());
 
 // Your local IPFS API
 const localNode = "http://ipfs";
