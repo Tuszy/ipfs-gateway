@@ -39,11 +39,13 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
     // Check if the file exists in the cache
     if (fs.existsSync(cacheFilePath) && fs.existsSync(contentTypeFilePath)) {
         console.log('Cache hit');
-        const cachedData = fs.readFileSync(cacheFilePath);
+
         const cachedContentType = fs.readFileSync(contentTypeFilePath, 'utf-8');
         res.set('Cache-Control', 'public, max-age=31557600');
         res.setHeader('Content-Type', cachedContentType);
-        return res.send(cachedData);
+
+        const stream = fs.createReadStream(cacheFilePath);
+        return stream.pipe(res);
     }
 
     // Check if the CID is available locally
