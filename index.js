@@ -54,6 +54,7 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
         });
 
         res.set(localStream.headers);
+        res.set('Cache-Control', 'public, max-age=31557600');
         return pipeline(localStream.data, res, (err) => {
             if (err) console.error("Pipeline error (local):", err);
         });
@@ -74,6 +75,7 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
         fs.writeFileSync(contentTypeFilePath, remoteStream.headers['content-type']); // Save Content-Type
 
         res.set(remoteStream.headers);
+        res.set('Cache-Control', 'public, max-age=31557600');
         res.send(remoteStream.data);
     } catch (err) {
         console.error("Failed to fetch from public gateway:", err.message);
