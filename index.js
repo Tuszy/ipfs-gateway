@@ -41,6 +41,7 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
         console.log('Cache hit');
         const cachedData = fs.readFileSync(cacheFilePath);
         const cachedContentType = fs.readFileSync(contentTypeFilePath, 'utf-8');
+        res.set('Cache-Control', 'public, max-age=31557600');
         res.setHeader('Content-Type', cachedContentType);
         return res.send(cachedData);
     }
@@ -76,7 +77,6 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
 
         remoteStream.headers["Cache-Control"] = 'public, max-age=31557600';
         res.set(remoteStream.headers);
-        res.set('Cache-Control', 'public, max-age=31557600');
         res.send(remoteStream.data);
     } catch (err) {
         console.error("Failed to fetch from public gateway:", err.message);
