@@ -8,7 +8,7 @@ const port = 3000;
 
 // Your local IPFS API
 const localNode = "http://ipfs";
-const publicGateway = "https://ipfs.io";
+const publicGateway = "https://api.universalprofile.cloud" // "https://ipfs.io";
 
 const localGateway = axios.create({
     baseURL: localNode + ":8080",
