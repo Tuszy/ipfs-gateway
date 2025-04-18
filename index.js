@@ -10,7 +10,7 @@ app.use(cors());
 
 // Your local IPFS API
 const localNode = "http://ipfs";
-const publicGateway = "https://api.universalprofile.cloud" // "https://ipfs.io";
+const publicGateways = ["https://api.universalprofile.cloud", "https://ipfs.io", "https://gateway.pinata.cloud"];
 
 const localGateway = axios.create({
     baseURL: localNode + ":8080",
@@ -67,25 +67,28 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
         console.log(`CID ${cid} not found locally. Fetching from public gateway...`, err.message);
     }
 
-    // Not found locally — fetch from public gateway
-    try {
-        const remoteStream = await axios.get(`${publicGateway}/ipfs/${cid}`, {
-            responseType: "arraybuffer",
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; LuksoHangout/1.0)'
-            }
-        });
+    for (const publicGateway of publicGateways) {
+        try {
+            const remoteStream = await axios.get(`${publicGateway}/ipfs/${cid}`, {
+                responseType: "arraybuffer",
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (compatible; LuksoHangout/1.0)'
+                }
+            });
 
-        fs.writeFileSync(cacheFilePath, remoteStream.data); // Save to cache file
-        fs.writeFileSync(contentTypeFilePath, remoteStream.headers['content-type']); // Save Content-Type
+            fs.writeFileSync(cacheFilePath, remoteStream.data); // Save to cache file
+            fs.writeFileSync(contentTypeFilePath, remoteStream.headers['content-type']); // Save Content-Type
 
-        remoteStream.headers["Cache-Control"] = 'public, max-age=31557600';
-        res.set(remoteStream.headers);
-        res.send(remoteStream.data);
-    } catch (err) {
-        console.error("Failed to fetch from public gateway:", err.message);
-        res.status(500).send("Failed to fetch content.");
+            remoteStream.headers["Cache-Control"] = 'public, max-age=31557600';
+            res.set(remoteStream.headers);
+            res.send(remoteStream.data);
+            return;
+        } catch (err) {
+            console.error("Failed to fetch from public gateway:", `${publicGateway}/ipfs/${cid}`, err.message);
+        }
     }
+
+    res.status(500).send("Failed to fetch content.");
 });
 
 app.listen(port, () => {
