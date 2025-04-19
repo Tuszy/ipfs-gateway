@@ -53,8 +53,10 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
                 }
             });
 
-            fs.writeFileSync(cacheFilePath, response.data); // Save to cache file
-            fs.writeFileSync(contentTypeFilePath, response.headers['content-type']); // Save Content-Type
+            if (!range && response.status === 200) {
+                fs.writeFileSync(cacheFilePath, response.data); // Save to cache file
+                fs.writeFileSync(contentTypeFilePath, response.headers['content-type']); // Save Content-Type
+            }
 
             response.headers["Cache-Control"] = 'public, max-age=31557600';
             res.set(response.headers);
