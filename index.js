@@ -7,19 +7,12 @@ const app = express();
 const port = 3000;
 app.use(cors());
 
-// Your local IPFS API
-const localNode = "http://ipfs";
-const publicGateways = ["https://api.universalprofile.cloud", "https://ipfs.io", "https://gateway.pinata.cloud"];
-
-const localGateway = axios.create({
-    baseURL: localNode + ":8080",
-    port: 8080
-});
+const gateways = ["http://ipfs:8080", "https://api.universalprofile.cloud", "https://ipfs.io", "https://gateway.pinata.cloud"];
 
 const cacheDir = path.join(__dirname, 'cache');
 
 if (!fs.existsSync(cacheDir)) {
-    fs.mkdirSync(cacheDir); // Create the cache directory if it doesn't exist
+    fs.mkdirSync(cacheDir);
 }
 
 const getCacheFilePath = (cidPath) => {
@@ -49,39 +42,24 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
         return stream.pipe(res);
     }
 
-    // Check if the CID is available locally
-    try {
-        const localStream = await localGateway.get(`/ipfs/${cid}`, {
-            responseType: "stream",
-            redirect: "follow",
-            signal: AbortSignal.timeout(5000)
-        });
-
-        localStream.headers["Cache-Control"] = 'public, max-age=31557600';
-        res.set(localStream.headers);
-        localStream.pipe(res);
-    } catch (err) {
-        console.log(`CID ${cid} not found locally. Fetching from public gateway...`, err.message);
-    }
-
-    for (const publicGateway of publicGateways) {
+    for (const gateway of gateways) {
         try {
-            const remoteStream = await axios.get(`${publicGateway}/ipfs/${cid}`, {
+            const response = await axios.get(`${gateway}/ipfs/${cid}`, {
                 responseType: "arraybuffer",
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (compatible; LuksoHangout/1.0)'
                 }
             });
 
-            fs.writeFileSync(cacheFilePath, remoteStream.data); // Save to cache file
-            fs.writeFileSync(contentTypeFilePath, remoteStream.headers['content-type']); // Save Content-Type
+            fs.writeFileSync(cacheFilePath, response.data); // Save to cache file
+            fs.writeFileSync(contentTypeFilePath, response.headers['content-type']); // Save Content-Type
 
-            remoteStream.headers["Cache-Control"] = 'public, max-age=31557600';
-            res.set(remoteStream.headers);
-            res.send(remoteStream.data);
+            response.headers["Cache-Control"] = 'public, max-age=31557600';
+            res.set(response.headers);
+            res.send(response.data);
             return;
         } catch (err) {
-            console.error("Failed to fetch from public gateway:", `${publicGateway}/ipfs/${cid}`, err.message);
+            console.error("Failed to fetch from gateway:", `${gateway}/ipfs/${cid}`, err.message);
         }
     }
 
