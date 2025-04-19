@@ -1,7 +1,6 @@
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
-const { pipeline } = require("stream");
 const fs = require('fs');
 const path = require('path');
 const app = express();
@@ -60,9 +59,7 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
 
         localStream.headers["Cache-Control"] = 'public, max-age=31557600';
         res.set(localStream.headers);
-        return pipeline(localStream.data, res, (err) => {
-            if (err) console.error("Pipeline error (local):", err);
-        });
+        localStream.pipe(res);
     } catch (err) {
         console.log(`CID ${cid} not found locally. Fetching from public gateway...`, err.message);
     }
