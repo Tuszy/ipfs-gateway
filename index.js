@@ -29,6 +29,7 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
 
     const cacheFilePath = getCacheFilePath(cid);
     const contentTypeFilePath = getContentTypeFilePath(cid);
+    const range = req.range();
 
     // Check if the file exists in the cache
     if (fs.existsSync(cacheFilePath) && fs.existsSync(contentTypeFilePath)) {
@@ -38,7 +39,7 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
         res.set('Cache-Control', 'public, max-age=31557600');
         res.setHeader('Content-Type', cachedContentType);
 
-        const stream = fs.createReadStream(cacheFilePath);
+        const stream = fs.createReadStream(cacheFilePath, range ? range[0] : undefined);
         return stream.pipe(res);
     }
 
@@ -47,7 +48,8 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
             const response = await axios.get(`${gateway}/ipfs/${cid}`, {
                 responseType: "arraybuffer",
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (compatible; LuksoHangout/1.0)'
+                    'User-Agent': 'Mozilla/5.0 (compatible; LuksoHangout/1.0)',
+                    'Range': req.headers["Range"]
                 }
             });
 
