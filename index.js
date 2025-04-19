@@ -57,6 +57,7 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
             response.headers["Cache-Control"] = 'public, max-age=31557600';
             res.set(response.headers);
             res.send(response.data);
+            console.error("Fetched from gateway:", `${gateway}/ipfs/${cid}`);
             return;
         } catch (err) {
             console.error("Failed to fetch from gateway:", `${gateway}/ipfs/${cid}`, err.message);
