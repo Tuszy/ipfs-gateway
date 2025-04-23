@@ -7,7 +7,9 @@ const app = express();
 const port = 3000;
 app.use(cors());
 
-const gateways = ["http://ipfs:8080", "https://api.universalprofile.cloud", "https://ipfs.io", "https://gateway.pinata.cloud"];
+const ABORT_SIGNAL_TIMEOUT = 5000;
+const localGateway = "http://ipfs:8080";
+const gateways = [localGateway, "https://api.universalprofile.cloud", "https://ipfs.io", "https://gateway.pinata.cloud"];
 
 const cacheDir = path.join(__dirname, 'cache');
 
@@ -50,7 +52,8 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (compatible; LuksoHangout/1.0)',
                     'Range': req.headers["Range"]
-                }
+                },
+                signal: localGateway === gateway ? AbortSignal.timeout(ABORT_SIGNAL_TIMEOUT) : undefined
             });
 
             if (!range && response.status === 200) {
