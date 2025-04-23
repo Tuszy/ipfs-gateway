@@ -38,7 +38,9 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
         console.log('Cache hit');
 
         const cachedContentType = fs.readFileSync(contentTypeFilePath, 'utf-8');
-        res.set('Cache-Control', 'public, max-age=31557600');
+        if (!range) {
+            res.set('Cache-Control', 'public, max-age=31557600');
+        }
         res.setHeader('Content-Type', cachedContentType);
 
         const stream = fs.createReadStream(cacheFilePath, range ? range[0] : undefined);
@@ -59,9 +61,11 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
             if (!range && response.status === 200) {
                 fs.writeFileSync(cacheFilePath, response.data); // Save to cache file
                 fs.writeFileSync(contentTypeFilePath, response.headers['content-type']); // Save Content-Type
+                response.headers["Cache-Control"] = 'public, max-age=31557600';
+            } else {
+                delete response.headers["Cache-Control"];
             }
 
-            response.headers["Cache-Control"] = 'public, max-age=31557600';
             res.set(response.headers);
             res.send(response.data);
             console.error("Fetched from gateway:", `${gateway}/ipfs/${cid}`);
