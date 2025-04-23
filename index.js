@@ -9,7 +9,7 @@ app.use(cors());
 
 const ABORT_SIGNAL_TIMEOUT = 5000;
 const localGateway = "http://ipfs:8080";
-const gateways = [localGateway, "https://api.universalprofile.cloud", "https://ipfs.io", "https://gateway.pinata.cloud"];
+const gateways = ["https://api.universalprofile.cloud", "https://ipfs.io", "https://gateway.pinata.cloud"];
 
 const cacheDir = path.join(__dirname, 'cache');
 
