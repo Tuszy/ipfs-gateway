@@ -35,8 +35,6 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
 
     // Check if the file exists in the cache
     if (fs.existsSync(cacheFilePath) && fs.existsSync(contentTypeFilePath)) {
-        console.log('Cache hit');
-
         const cachedContentType = fs.readFileSync(contentTypeFilePath, 'utf-8');
         if (!range) {
             res.set('Cache-Control', 'public, max-age=31557600');
@@ -44,6 +42,8 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
         res.setHeader('Content-Type', cachedContentType);
 
         const stream = fs.createReadStream(cacheFilePath, range ? range[0] : undefined);
+
+        console.log('Cache hit', cid, cachedContentType);
         return stream.pipe(res);
     }
 
@@ -52,24 +52,22 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
             const response = await axios.get(`${gateway}/ipfs/${cid}`, {
                 responseType: "arraybuffer",
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (compatible; LuksoHangout/1.0)',
-                    'Range': req.headers["Range"]
+                    'User-Agent': 'Mozilla/5.0 (compatible; LuksoHangout/1.0)'
                 },
                 signal: localGateway === gateway ? AbortSignal.timeout(ABORT_SIGNAL_TIMEOUT) : undefined
             });
 
-            if (!range && response.status === 200) {
-                fs.writeFileSync(cacheFilePath, response.data); // Save to cache file
-                fs.writeFileSync(contentTypeFilePath, response.headers['content-type']); // Save Content-Type
-                response.headers["Cache-Control"] = 'public, max-age=31557600';
-            } else {
-                delete response.headers["Cache-Control"];
-            }
+            fs.writeFileSync(cacheFilePath, response.data);
+            fs.writeFileSync(contentTypeFilePath, response.headers['content-type']);
 
-            res.set(response.headers);
-            res.send(response.data);
-            console.error("Fetched from gateway:", `${gateway}/ipfs/${cid}`);
-            return;
+            if (!range) {
+                res.set('Cache-Control', 'public, max-age=31557600');
+            }
+            res.setHeader('Content-Type', response.headers['content-type']);
+
+            const stream = fs.createReadStream(cacheFilePath, range ? range[0] : undefined);
+            console.log("Fetched from gateway:", `${gateway}/ipfs/${cid}`);
+            return stream.pipe(res);
         } catch (err) {
             console.error("Failed to fetch from gateway:", `${gateway}/ipfs/${cid}`, err.message);
         }
