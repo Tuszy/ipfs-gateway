@@ -31,7 +31,10 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
 
     const cacheFilePath = getCacheFilePath(cid);
     const contentTypeFilePath = getContentTypeFilePath(cid);
-    const range = req.range();
+    let range = req.range();
+    if (range === -1) {
+        range = undefined;
+    }
 
     // Check if the file exists in the cache
     if (fs.existsSync(cacheFilePath) && fs.existsSync(contentTypeFilePath)) {
