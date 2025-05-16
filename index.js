@@ -25,29 +25,54 @@ const getContentTypeFilePath = (cidPath) => {
     return path.join(cacheDir, `${cidPath.replace(/\//g, '_')}.content-type`);
 };
 
+const streamCachedFile = (req, res, filePath, contentTypeFilePath) => {
+    if (!(fs.existsSync(filePath) && fs.existsSync(contentTypeFilePath))) return false;
+    const cachedContentType = fs.readFileSync(contentTypeFilePath, 'utf-8');
+    const stats = fs.statSync(filePath);
+    let range = req.range(stats.size);
+
+    if (range === -1 || range === -2) {
+        range = undefined;
+    }
+
+    if (range && (range[0].end - range[0].start + 1) === stats.size) {
+        range = undefined; // Full file requested
+    }
+
+    console.log('Served: ', filePath, cachedContentType);
+
+    res.setHeader('Content-Type', cachedContentType);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.set('Cache-Control', 'public, max-age=31557600');
+
+    if (range) {
+        const { start, end } = range[0];
+        const chunkSize = end - start + 1;
+
+        res.status(206);
+        res.setHeader('Content-Range', `bytes ${start}-${end}/${stats.size}`);
+        res.setHeader('Content-Length', chunkSize);
+
+        const stream = fs.createReadStream(filePath, { start, end });
+        return stream.pipe(res);
+    } else {
+        res.status(200);
+        res.setHeader('Content-Length', stats.size);
+
+        const stream = fs.createReadStream(filePath);
+        return stream.pipe(res);
+    }
+}
 
 app.get("/ipfs/:cid(*)", async (req, res) => {
     const cid = req.params.cid;
 
     const cacheFilePath = getCacheFilePath(cid);
     const contentTypeFilePath = getContentTypeFilePath(cid);
-    let range = req.range();
-    if (range === -1) {
-        range = undefined;
-    }
 
-    // Check if the file exists in the cache
-    if (fs.existsSync(cacheFilePath) && fs.existsSync(contentTypeFilePath)) {
-        const cachedContentType = fs.readFileSync(contentTypeFilePath, 'utf-8');
-        if (!range) {
-            res.set('Cache-Control', 'public, max-age=31557600');
-        }
-        res.setHeader('Content-Type', cachedContentType);
-
-        const stream = fs.createReadStream(cacheFilePath, range ? range[0] : undefined);
-
-        console.log('Cache hit', cid, cachedContentType);
-        return stream.pipe(res);
+    if (streamCachedFile(req, res, cacheFilePath, contentTypeFilePath)) {
+        console.log('Cache hit', cid);
+        return;
     }
 
     for (const gateway of gateways) {
@@ -63,14 +88,10 @@ app.get("/ipfs/:cid(*)", async (req, res) => {
             fs.writeFileSync(cacheFilePath, response.data);
             fs.writeFileSync(contentTypeFilePath, response.headers['content-type']);
 
-            if (!range) {
-                res.set('Cache-Control', 'public, max-age=31557600');
+            if (streamCachedFile(req, res, cacheFilePath, contentTypeFilePath)) {
+                console.log("Fetched from gateway:", `${gateway}/ipfs/${cid}`);
+                return;
             }
-            res.setHeader('Content-Type', response.headers['content-type']);
-
-            const stream = fs.createReadStream(cacheFilePath, range ? range[0] : undefined);
-            console.log("Fetched from gateway:", `${gateway}/ipfs/${cid}`);
-            return stream.pipe(res);
         } catch (err) {
             console.error("Failed to fetch from gateway:", `${gateway}/ipfs/${cid}`, err.message);
         }
