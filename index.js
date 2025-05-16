@@ -43,7 +43,7 @@ const streamCachedFile = (req, res, filePath, contentTypeFilePath) => {
 
     res.setHeader('Content-Type', cachedContentType);
     res.setHeader('Accept-Ranges', 'bytes');
-    res.set('Cache-Control', 'public, max-age=31557600');
+    res.set('Cache-Control', 'public, max-age=31557600, immutable');
 
     if (range) {
         const { start, end } = range[0];
